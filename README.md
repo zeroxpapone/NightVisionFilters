@@ -1,24 +1,25 @@
 # NightVisionFilters <br>
 Made this to play EFT in the night without night visors. Should be working with both Nvidia and AMD gpus since it uses Windows APIs. <br>
-# Support my work <br>
+# Support my work  
 Your support is greatly appreciated and helps me keep improving the tool.
-<div style="display:flex; gap:12px; align-items:center; margin-left:20px">
 
-  <a href="https://www.buymeacoffee.com/zeroxpapone" target="_blank">
+<div style="display:flex; gap:12px; align-items:center; margin-left:20px;">
+
+  <a href="https://www.buymeacoffee.com/zeroxpapone" target="_blank" style="display:inline-block;">
     <img 
       src="https://cdn.buymeacoffee.com/buttons/default-orange.png" 
       alt="Buy Me A Coffee" 
       height="48"
-      style="border-radius:8px;"
+      style="border-radius:8px; display:block; border:0; margin:0; padding:0;"
     >
   </a>
 
-  <a href="https://github.com/sponsors/zeroxpapone" target="_blank">
+  <a href="https://github.com/sponsors/zeroxpapone" target="_blank" style="display:inline-block;">
     <img 
       src="https://img.shields.io/badge/Sponsor_on_GitHub-181717?style=flat&logo=github" 
       alt="GitHub Sponsors" 
       height="48"
-      style="border-radius:8px;"
+      style="border-radius:8px; display:block; border:0; margin:0; padding:0;"
     >
   </a>
 
