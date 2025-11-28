@@ -9,4 +9,4 @@ Made this to play EFT in the night without night visors. Should be working with 
 * If you plan on using VM MacroButtons instead (as I do), configure a button to have this as "Request for Button ON / Trigger IN:" -> System.Execute("PATH TO NVFT.exe","",""); <br>
 * MacroButtons is useful if you already use VoiceMeeter with an external MIDI device (again, as I do) so you can assign a MIDI control to it (bottom left side of the Button Configuration -> M.I.D.I. Implementation -> Learn (From MIDI mapping device)). <br>
 # Contacts <br>
-I don't plan to maintain the project long-term unless I receive requests or reports from users. If you have anything to report or request, please message me on [Discord](https://discord.com/users/402818359185506304).
+I don't plan to maintain the project long-term unless I receive requests or reports from users. If you have anything to report or request, please dm me on [Discord](https://discord.com/users/402818359185506304).
