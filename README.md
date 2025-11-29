@@ -17,7 +17,7 @@ Your support is greatly appreciated and helps me keep improving the tool.
 ## How to use <br>
 * Download the .exe file from the [Releases page](https://github.com/zeroxpapone/NightVisionFilters/releases) and run it. A settings.json file will be auto created in the same directory. <br>
 * I recommend checking that the default values ​​suit your tastes as I cannot guarantee that they will work well on all monitors. Hop on an offline raid to check them out. <br>
-* Shortcut to toggle "filters" on/off is CTRL + F10 by default. It can be changed through the Settings panel (v2.0 and above). <br>
+* Shortcut to toggle "filters" on/off is CTRL + F10 by default. It can be changed through the Settings panel ([v2.0](https://github.com/zeroxpapone/NightVisionFilters/releases/tag/v2.0) and above). <br>
 ## Streamdeck - MacroButtons compatible (v1.1 and later) <br>
 * If you plan on using this tool with Elgato Streamdeck, just set a button to run the .exe file. If the program is not running, it will be launched. If it's already running, it will toggle the "filters" the same way as the shortcut does. <br>
 * If you plan on using VM MacroButtons instead (as I do), configure a button to have this as "Request for Button ON / Trigger IN:" -> System.Execute("PATH TO NVFT.exe","",""); <br>
