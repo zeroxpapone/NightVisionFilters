@@ -559,7 +559,7 @@ class SettingsApp(ctk.CTk):
         # Etichetta hint sotto
         hint = ctk.CTkLabel(
             parent,
-            text="Esempio: ctrl+f10, alt+shift+f9",
+            text="Example: ctrl+f10, alt+shift+f9",
             font=("Segoe UI", 12, "bold"),
             text_color=TEXT_MUTED
         )
@@ -571,7 +571,7 @@ class SettingsApp(ctk.CTk):
 
         lbl_autostart = ctk.CTkLabel(
             row2,
-            text="Avvia NVFT con Windows",
+            text="Launch at system startup",
             font=("Segoe UI", 12),
             text_color=TEXT_MAIN
         )
@@ -597,7 +597,7 @@ class SettingsApp(ctk.CTk):
 
         lbl_topmost = ctk.CTkLabel(
             row3,
-            text="Mostra sempre in primo piano",
+            text="Set always on top",
             font=("Segoe UI", 12),
             text_color=TEXT_MAIN
         )
@@ -663,7 +663,7 @@ class SettingsApp(ctk.CTk):
 
         # feedback visivo
         self.shortcut_entry.configure(state="normal")
-        self.shortcut_var.set("Premi la nuova scorciatoia...")
+        self.shortcut_var.set("Press the new shortcut...")
         self.shortcut_entry.configure(state="readonly")
 
         def worker():
