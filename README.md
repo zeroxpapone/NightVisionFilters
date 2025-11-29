@@ -1,5 +1,5 @@
 # NightVisionFilters <br>
-Made this to play EFT in the night without night visors. Should be working with both Nvidia and AMD gpus since it uses Windows APIs. <br>
+Made this to play Tarkov in the night without night visors. Based on Windows API, works with both Nvidia and AMD graphic cards. <br>
 ## Support my work  
 Your support is greatly appreciated and helps me keep improving the tool.
 <div style="display:flex; gap:12px; align-items:center; margin-left:20px;">
@@ -17,7 +17,7 @@ Your support is greatly appreciated and helps me keep improving the tool.
 ## How to use <br>
 * Download the .exe file from the [Releases page](https://github.com/zeroxpapone/NightVisionFilters/releases) and run it. A settings.json file will be auto created in the same directory. <br>
 * I recommend checking that the default values ​​suit your tastes as I cannot guarantee that they will work well on all monitors. Hop on an offline raid to check them out. <br>
-* Shortcut to toggle "filters" on/off is CTRL + F10. It's not currently possible to change it, but I may implement it in the future if needed and requested. <br>
+* Shortcut to toggle "filters" on/off is CTRL + F10 by default. It can be changed through the Settings panel ([v2.0](https://github.com/zeroxpapone/NightVisionFilters/releases/tag/v2.0) and above). <br>
 ## Streamdeck - MacroButtons compatible (v1.1 and later) <br>
 * If you plan on using this tool with Elgato Streamdeck, just set a button to run the .exe file. If the program is not running, it will be launched. If it's already running, it will toggle the "filters" the same way as the shortcut does. <br>
 * If you plan on using VM MacroButtons instead (as I do), configure a button to have this as "Request for Button ON / Trigger IN:" -> System.Execute("PATH TO NVFT.exe","",""); <br>
