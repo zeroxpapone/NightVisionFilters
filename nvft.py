@@ -215,14 +215,17 @@ class DisplayState:
             try:
                 with open(CONFIG_FILE, 'r') as f:
                     loaded = json.load(f)
-                    self.current_settings.update(loaded)
-                    self.default_settings.update(loaded)
-                    self.autostart_enabled = bool(loaded.get("autostart", False))
-                    if "always_on_top" in loaded:
-                        self.always_on_top = bool(loaded["always_on_top"])
+                self.current_settings.update(loaded)
+                self.default_settings.update(loaded)
+                self.autostart_enabled = bool(loaded.get("autostart", False))
+                if "always_on_top" in loaded:
+                    self.always_on_top = bool(loaded["always_on_top"])
             except:
                 pass
-
+        
+        if not os.path.exists(CONFIG_FILE):
+            self.save_settings()
+        
         dc = get_monitor_dc()
         if dc:
             if not windll.gdi32.GetDeviceGammaRamp(dc, byref(self.original_ramp)):
@@ -242,8 +245,12 @@ class DisplayState:
         try:
             data = self.current_settings.copy()
             data["autostart"] = self.autostart_enabled
-            data["hotkey_keys"] = self.hotkey_keys
             data["always_on_top"] = self.always_on_top
+
+            # salva anche la hotkey corrente (se impostata)
+            if "hotkey" in self.current_settings:
+                data["hotkey"] = self.current_settings["hotkey"]
+
             with open(CONFIG_FILE, 'w') as f:
                 json.dump(data, f, indent=4)
         except Exception as e:
@@ -733,8 +740,8 @@ def run_tray(app_ref):
         toggle_window()
 
     def on_exit(icon, item):
-        state.restore_defaults()
         state.save_settings()
+        state.restore_defaults()
         icon.stop()
         app_ref.quit()
         os._exit(0)
@@ -791,8 +798,6 @@ def hotkey_handler():
 def main():
     global HOTKEY
     
-    HOTKEY = state.current_settings.get("hotkey", HOTKEY)
-    
     test_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         test_socket.bind(("127.0.0.1", LOCAL_PORT))
@@ -802,6 +807,7 @@ def main():
         sys.exit(0)
         
     start_command_listener(state)
+    HOTKEY = state.current_settings.get("hotkey", HOTKEY)
     keyboard.add_hotkey(HOTKEY, hotkey_handler)
 
     app = SettingsApp(state)
