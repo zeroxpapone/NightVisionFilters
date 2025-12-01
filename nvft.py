@@ -323,24 +323,34 @@ class DisplayState:
             self.apply_custom_settings()
     
     def save_preset(self, preset_name):
-        """Salva le impostazioni correnti come preset"""
+        """Save current settings as a preset"""
         preset_data = {
             "brightness": self.current_settings["brightness"],
             "contrast": self.current_settings["contrast"],
             "gamma": self.current_settings["gamma"],
             "red_scale": self.current_settings["red_scale"],
             "green_scale": self.current_settings["green_scale"],
-            "blue_scale": self.current_settings["blue_scale"]
+            "blue_scale": self.current_settings["blue_scale"],
         }
+
+        # mantieni eventuale hotkey già assegnata a questo preset
+        old = self.presets.get(preset_name)
+        if isinstance(old, dict) and "hotkey" in old:
+            preset_data["hotkey"] = old["hotkey"]
+        else:
+            preset_data["hotkey"] = None
+
         self.presets[preset_name] = preset_data
         self.save_presets_to_file()
+
     
     def load_preset(self, preset_name):
-        """Carica un preset salvato"""
+        """Load a saved preset"""
         if preset_name in self.presets:
             preset_data = self.presets[preset_name]
-            for key, value in preset_data.items():
-                self.current_settings[key] = value
+            for key in ("brightness", "contrast", "gamma", "red_scale", "green_scale", "blue_scale"):
+                if key in preset_data:
+                    self.current_settings[key] = preset_data[key]
             if self.active:
                 self.apply_custom_settings()
             self.trigger_ui_update()
@@ -348,7 +358,7 @@ class DisplayState:
         return False
     
     def delete_preset(self, preset_name):
-        """Elimina un preset"""
+        """Delete a preset"""
         if preset_name in self.presets:
             del self.presets[preset_name]
             self.save_presets_to_file()
@@ -356,7 +366,7 @@ class DisplayState:
         return False
     
     def rename_preset(self, old_name, new_name):
-        """Rinomina un preset"""
+        """Rename a preset"""
         if old_name in self.presets and new_name not in self.presets:
             self.presets[new_name] = self.presets.pop(old_name)
             self.save_presets_to_file()
@@ -364,11 +374,11 @@ class DisplayState:
         return False
     
     def get_preset_names(self):
-        """Ottieni lista nomi preset ordinati alfabeticamente"""
+        """Get a list of preset names sorted alphabetically"""
         return sorted(self.presets.keys())
     
     def save_presets_to_file(self):
-        """Salva i preset su file"""
+        """Save presets to file"""
         try:
             with open(PRESETS_FILE, 'w') as f:
                 json.dump(self.presets, f, indent=4)
@@ -790,7 +800,7 @@ class SettingsApp(ctk.CTk):
         self.attributes("-topmost", value)
     
     def build_presets_section(self, parent):
-        """Costruisce la sezione per gestire i preset"""
+        """Build section for managing presets"""
         # Container per lista preset e bottoni
         list_container = ctk.CTkFrame(parent, fg_color="transparent")
         list_container.pack(fill="x", padx=14, pady=(10, 6))
@@ -847,13 +857,13 @@ class SettingsApp(ctk.CTk):
         btn_manage.pack(side="right", expand=True, fill="x", padx=(4, 0))
 
     def update_presets_list(self):
-        """Aggiorna la lista dei preset visualizzati"""
+        """Update presets list UI"""
         # Pulisci lista attuale
         for widget in self.presets_list_frame.winfo_children():
             widget.destroy()
 
         preset_names = self.display_state.get_preset_names()
-        
+
         if not preset_names:
             # Messaggio se non ci sono preset
             no_presets_lbl = ctk.CTkLabel(
@@ -863,47 +873,74 @@ class SettingsApp(ctk.CTk):
                 text_color=TEXT_MUTED
             )
             no_presets_lbl.pack(pady=12)
-        else:
-            # Mostra max 5 preset, poi scroll
-            for idx, preset_name in enumerate(preset_names[:5]):
-                preset_row = ctk.CTkFrame(
-                    self.presets_list_frame,
-                    fg_color="transparent"
-                )
-                preset_row.pack(fill="x", padx=8, pady=4)
+            return
 
-                # Nome preset
-                name_lbl = ctk.CTkLabel(
-                    preset_row,
-                    text=preset_name,
-                    font=("Segoe UI", 12),
-                    text_color=TEXT_MAIN,
-                    anchor="w"
-                )
-                name_lbl.pack(side="left", fill="x", expand=True)
+        # Mostra max 5 preset, poi indicatore "...more"
+        for idx, preset_name in enumerate(preset_names[:5]):
+            preset_row = ctk.CTkFrame(
+                self.presets_list_frame,
+                fg_color="transparent"
+            )
+            preset_row.pack(fill="x", padx=8, pady=4)
 
-                # Bottone Load
-                btn_load = ctk.CTkButton(
-                    preset_row,
-                    text="Load",
-                    width=60,
-                    height=28,
-                    font=("Segoe UI", 11),
-                    fg_color=ACCENT,
-                    hover_color=ACCENT_DARK,
-                    corner_radius=6,
-                    command=lambda name=preset_name: self.load_preset(name)
-                )
-                btn_load.pack(side="right")
-            
-            if len(preset_names) > 5:
-                more_lbl = ctk.CTkLabel(
-                    self.presets_list_frame,
-                    text=f"+ {len(preset_names) - 5} more...",
-                    font=("Segoe UI", 10),
-                    text_color=TEXT_MUTED
-                )
-                more_lbl.pack(pady=(4, 8))
+            # Nome preset
+            name_lbl = ctk.CTkLabel(
+                preset_row,
+                text=preset_name,
+                font=("Segoe UI", 12),
+                text_color=TEXT_MAIN,
+                anchor="w"
+            )
+            name_lbl.pack(side="left", fill="x", expand=True)
+
+            # Campo hotkey preset (readonly)
+            preset_hotkey = None
+            preset_data = self.display_state.presets.get(preset_name)
+            if isinstance(preset_data, dict):
+                preset_hotkey = preset_data.get("hotkey")
+
+            hotkey_text = preset_hotkey if preset_hotkey else "No hotkey"
+            var = ctk.StringVar(value=hotkey_text)
+
+            hotkey_entry = ctk.CTkEntry(
+                preset_row,
+                textvariable=var,
+                width=120,
+                font=("Consolas", 11),
+                corner_radius=6,
+                state="readonly"
+            )
+            hotkey_entry.pack(side="right", padx=(4, 0))
+
+            # click sulla casella = registra hotkey per questo preset
+            hotkey_entry.bind(
+                "<Button-1>",
+                lambda e, name=preset_name, sv=var: self.start_preset_hotkey_recording(name, sv)
+            )
+
+            # Bottone Load
+            btn_load = ctk.CTkButton(
+                preset_row,
+                text="Load",
+                width=60,
+                height=28,
+                font=("Segoe UI", 11),
+                fg_color=ACCENT,
+                hover_color=ACCENT_DARK,
+                corner_radius=6,
+                command=lambda name=preset_name: self.load_preset(name)
+            )
+            btn_load.pack(side="right", padx=(4, 4))
+
+        if len(preset_names) > 5:
+            more_lbl = ctk.CTkLabel(
+                self.presets_list_frame,
+                text=f"+ {len(preset_names) - 5} more...",
+                font=("Segoe UI", 10),
+                text_color=TEXT_MUTED
+            )
+            more_lbl.pack(pady=(4, 8))
+
 
     def show_save_preset_dialog(self):
         """Mostra dialog per salvare un nuovo preset"""
@@ -1072,6 +1109,78 @@ class SettingsApp(ctk.CTk):
             command=manage_window.destroy
         )
         btn_close.pack(pady=(0, 20), padx=20, fill="x")
+        
+    def start_preset_hotkey_recording(self, preset_name, string_var: ctk.StringVar):
+        """Enter hotkey recording mode for a specific preset"""
+        if self.recording_hotkey:
+            return
+
+        self.recording_hotkey = True
+        old_hotkey = None
+        preset_data = self.display_state.presets.get(preset_name, {})
+        if isinstance(preset_data, dict):
+            old_hotkey = preset_data.get("hotkey")
+
+        # feedback visivo
+        string_var.set("Press new shortcut...")
+
+        def worker():
+            new_hotkey = None
+            try:
+                new_hotkey = keyboard.read_hotkey(suppress=True)
+            except Exception as e:
+                print(f"Error reading preset hotkey: {e}")
+
+            def apply_result():
+                self.recording_hotkey = False
+
+                # nessuna combo letta -> rollback
+                if not new_hotkey:
+                    string_var.set(old_hotkey if old_hotkey else "No hotkey")
+                    return
+
+                # salva hotkey nel preset
+                if preset_name in self.display_state.presets and isinstance(self.display_state.presets[preset_name], dict):
+                    self.display_state.presets[preset_name]["hotkey"] = new_hotkey
+                else:
+                    # preset inconsistente, ricrealo minimo
+                    self.display_state.presets[preset_name] = {
+                        "brightness": self.display_state.current_settings.get("brightness", DEFAULT_SETTINGS["brightness"]),
+                        "contrast": self.display_state.current_settings.get("contrast", DEFAULT_SETTINGS["contrast"]),
+                        "gamma": self.display_state.current_settings.get("gamma", DEFAULT_SETTINGS["gamma"]),
+                        "red_scale": self.display_state.current_settings.get("red_scale", DEFAULT_SETTINGS["red_scale"]),
+                        "green_scale": self.display_state.current_settings.get("green_scale", DEFAULT_SETTINGS["green_scale"]),
+                        "blue_scale": self.display_state.current_settings.get("blue_scale", DEFAULT_SETTINGS["blue_scale"]),
+                        "hotkey": new_hotkey
+                    }
+
+                # persisti sul file preset
+                self.display_state.save_presets_to_file()
+                string_var.set(new_hotkey)
+
+                # registra hotkey subito (se usi add_hotkey)
+                try:
+                    keyboard.add_hotkey(new_hotkey, lambda: self.apply_preset_from_hotkey(preset_name))
+                except Exception as e:
+                    print(f"Invalid preset hotkey '{new_hotkey}': {e}")
+                    string_var.set(old_hotkey if old_hotkey else "No hotkey")
+
+            self.after(0, apply_result)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+
+    def apply_preset_from_hotkey(self, preset_name):
+        """Apply a preset triggered by its hotkey"""
+        if self.display_state.load_preset(preset_name):
+            # se il filtro è attivo, riapplica subito
+            if self.display_state.active:
+                self.display_state.apply_custom_settings()
+            # aggiorna slider se UI è aperta
+            for key, widgets in self.sliders.items():
+                val = self.display_state.current_settings.get(key, 1.0)
+                widgets["slider"].set(val)
+                widgets["label"].configure(text=f"{val:.2f}")
 
 
 # --- TRAY ICON & THREADING ---
@@ -1158,7 +1267,9 @@ def hotkey_handler():
 
 def main():
     global HOTKEY
-    
+
+    HOTKEY = state.current_settings.get("hotkey", HOTKEY)
+
     test_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         test_socket.bind(("127.0.0.1", LOCAL_PORT))
@@ -1166,20 +1277,35 @@ def main():
     except OSError:
         try_send_command_to_existing_instance()
         sys.exit(0)
-        
+
     start_command_listener(state)
-    HOTKEY = state.current_settings.get("hotkey", HOTKEY)
+
+    # crea subito l'app, così la puoi usare nelle lambda
+    app = SettingsApp(state)
+    app.withdraw()
+
+    # hotkey globale ON/OFF
     keyboard.add_hotkey(HOTKEY, hotkey_handler)
 
-    app = SettingsApp(state)
-
-    # All’avvio: solo tray, finestra nascosta
-    app.withdraw()
+    # hotkey per preset
+    for preset_name, preset_data in state.presets.items():
+        if isinstance(preset_data, dict):
+            hk = preset_data.get("hotkey")
+            if hk:
+                try:
+                    keyboard.add_hotkey(
+                        hk,
+                        lambda name=preset_name, app_ref=app: app_ref.apply_preset_from_hotkey(name)
+                    )
+                    print(f"Registered preset hotkey '{hk}' for '{preset_name}'")
+                except Exception as e:
+                    print(f"Failed to register preset hotkey '{hk}' for '{preset_name}': {e}")
 
     tray_thread = threading.Thread(target=run_tray, args=(app,), daemon=True)
     tray_thread.start()
 
     app.mainloop()
+
 
 
 if __name__ == "__main__":
