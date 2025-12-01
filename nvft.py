@@ -21,6 +21,7 @@ APP_RUN_NAME = "NVFT"
 # --- CONFIGURAZIONE ---
 
 CONFIG_FILE = "settings.json"
+PRESETS_FILE = "presets.json"
 ICON_FILE = "icon.png"
 HOTKEY = "ctrl+f10"
 LOCAL_PORT = 65432
@@ -207,6 +208,7 @@ class DisplayState:
         self.original_ramp = RAMP()
         self.current_settings = DEFAULT_SETTINGS.copy()
         self.default_settings = DEFAULT_SETTINGS.copy()
+        self.presets = {}  # dizionario nome_preset -> impostazioni
         self.ui_callback = None
         self.autostart_enabled = is_autostart_enabled()  
         self.always_on_top = True  # default attivo      
@@ -222,6 +224,14 @@ class DisplayState:
                     self.always_on_top = bool(loaded["always_on_top"])
             except:
                 pass
+        
+        # Carica presets salvati
+        if os.path.exists(PRESETS_FILE):
+            try:
+                with open(PRESETS_FILE, 'r') as f:
+                    self.presets = json.load(f)
+            except:
+                self.presets = {}
         
         if not os.path.exists(CONFIG_FILE):
             self.save_settings()
@@ -311,6 +321,59 @@ class DisplayState:
             self.restore_defaults()
         else:
             self.apply_custom_settings()
+    
+    def save_preset(self, preset_name):
+        """Salva le impostazioni correnti come preset"""
+        preset_data = {
+            "brightness": self.current_settings["brightness"],
+            "contrast": self.current_settings["contrast"],
+            "gamma": self.current_settings["gamma"],
+            "red_scale": self.current_settings["red_scale"],
+            "green_scale": self.current_settings["green_scale"],
+            "blue_scale": self.current_settings["blue_scale"]
+        }
+        self.presets[preset_name] = preset_data
+        self.save_presets_to_file()
+    
+    def load_preset(self, preset_name):
+        """Carica un preset salvato"""
+        if preset_name in self.presets:
+            preset_data = self.presets[preset_name]
+            for key, value in preset_data.items():
+                self.current_settings[key] = value
+            if self.active:
+                self.apply_custom_settings()
+            self.trigger_ui_update()
+            return True
+        return False
+    
+    def delete_preset(self, preset_name):
+        """Elimina un preset"""
+        if preset_name in self.presets:
+            del self.presets[preset_name]
+            self.save_presets_to_file()
+            return True
+        return False
+    
+    def rename_preset(self, old_name, new_name):
+        """Rinomina un preset"""
+        if old_name in self.presets and new_name not in self.presets:
+            self.presets[new_name] = self.presets.pop(old_name)
+            self.save_presets_to_file()
+            return True
+        return False
+    
+    def get_preset_names(self):
+        """Ottieni lista nomi preset ordinati alfabeticamente"""
+        return sorted(self.presets.keys())
+    
+    def save_presets_to_file(self):
+        """Salva i preset su file"""
+        try:
+            with open(PRESETS_FILE, 'w') as f:
+                json.dump(self.presets, f, indent=4)
+        except Exception as e:
+            print(f"Error saving presets: {e}")
 
 state = DisplayState()
 
@@ -414,6 +477,20 @@ class SettingsApp(ctk.CTk):
         self.create_slider(self.card_color, "Red Boost", "red_scale", 0.0, 2.0, 0.05)
         self.create_slider(self.card_color, "Green Boost", "green_scale", 0.0, 2.0, 0.05)
         self.create_slider(self.card_color, "Blue Boost", "blue_scale", 0.0, 2.0, 0.05)
+
+        # CARD 3: Presets
+        self.create_section_header("PRESETS")
+
+        self.card_presets = ctk.CTkFrame(
+            self.scroll_frame,
+            corner_radius=14,
+            fg_color=CARD_BG,
+            border_width=1,
+            border_color=BORDER_COLOR
+        )
+        self.card_presets.pack(fill="x", pady=(0, 14))
+
+        self.build_presets_section(self.card_presets)
 
         self.create_section_header("GENERAL")
 
@@ -711,6 +788,290 @@ class SettingsApp(ctk.CTk):
         self.display_state.always_on_top = value
         self.display_state.save_settings()
         self.attributes("-topmost", value)
+    
+    def build_presets_section(self, parent):
+        """Costruisce la sezione per gestire i preset"""
+        # Container per lista preset e bottoni
+        list_container = ctk.CTkFrame(parent, fg_color="transparent")
+        list_container.pack(fill="x", padx=14, pady=(10, 6))
+
+        # Label
+        lbl_presets = ctk.CTkLabel(
+            list_container,
+            text="Saved Presets",
+            font=("Segoe UI", 13, "bold"),
+            text_color=TEXT_MAIN
+        )
+        lbl_presets.pack(anchor="w", pady=(0, 8))
+
+        # Frame per la lista di preset (scrollabile se necessario)
+        self.presets_list_frame = ctk.CTkFrame(
+            list_container,
+            fg_color=CARD_ALT_BG,
+            corner_radius=8,
+            border_width=1,
+            border_color=BORDER_COLOR
+        )
+        self.presets_list_frame.pack(fill="x", pady=(0, 10))
+
+        self.update_presets_list()
+
+        # Bottoni azione
+        buttons_frame = ctk.CTkFrame(list_container, fg_color="transparent")
+        buttons_frame.pack(fill="x")
+
+        # Bottone Salva nuovo preset
+        btn_save = ctk.CTkButton(
+            buttons_frame,
+            text="💾 Save Current",
+            font=("Segoe UI", 12, "bold"),
+            fg_color=SUCCESS,
+            hover_color="#2d8532",
+            corner_radius=8,
+            height=36,
+            command=self.show_save_preset_dialog
+        )
+        btn_save.pack(side="left", expand=True, fill="x", padx=(0, 4))
+
+        # Bottone Gestisci preset
+        btn_manage = ctk.CTkButton(
+            buttons_frame,
+            text="⚙️ Manage",
+            font=("Segoe UI", 12, "bold"),
+            fg_color=ACCENT,
+            hover_color=ACCENT_DARK,
+            corner_radius=8,
+            height=36,
+            command=self.show_manage_presets_dialog
+        )
+        btn_manage.pack(side="right", expand=True, fill="x", padx=(4, 0))
+
+    def update_presets_list(self):
+        """Aggiorna la lista dei preset visualizzati"""
+        # Pulisci lista attuale
+        for widget in self.presets_list_frame.winfo_children():
+            widget.destroy()
+
+        preset_names = self.display_state.get_preset_names()
+        
+        if not preset_names:
+            # Messaggio se non ci sono preset
+            no_presets_lbl = ctk.CTkLabel(
+                self.presets_list_frame,
+                text="No presets saved yet",
+                font=("Segoe UI", 11),
+                text_color=TEXT_MUTED
+            )
+            no_presets_lbl.pack(pady=12)
+        else:
+            # Mostra max 5 preset, poi scroll
+            for idx, preset_name in enumerate(preset_names[:5]):
+                preset_row = ctk.CTkFrame(
+                    self.presets_list_frame,
+                    fg_color="transparent"
+                )
+                preset_row.pack(fill="x", padx=8, pady=4)
+
+                # Nome preset
+                name_lbl = ctk.CTkLabel(
+                    preset_row,
+                    text=preset_name,
+                    font=("Segoe UI", 12),
+                    text_color=TEXT_MAIN,
+                    anchor="w"
+                )
+                name_lbl.pack(side="left", fill="x", expand=True)
+
+                # Bottone Load
+                btn_load = ctk.CTkButton(
+                    preset_row,
+                    text="Load",
+                    width=60,
+                    height=28,
+                    font=("Segoe UI", 11),
+                    fg_color=ACCENT,
+                    hover_color=ACCENT_DARK,
+                    corner_radius=6,
+                    command=lambda name=preset_name: self.load_preset(name)
+                )
+                btn_load.pack(side="right")
+            
+            if len(preset_names) > 5:
+                more_lbl = ctk.CTkLabel(
+                    self.presets_list_frame,
+                    text=f"+ {len(preset_names) - 5} more...",
+                    font=("Segoe UI", 10),
+                    text_color=TEXT_MUTED
+                )
+                more_lbl.pack(pady=(4, 8))
+
+    def show_save_preset_dialog(self):
+        """Mostra dialog per salvare un nuovo preset"""
+        dialog = ctk.CTkInputDialog(
+            text="Enter a name for this preset:",
+            title="Save Preset"
+        )
+        preset_name = dialog.get_input()
+        
+        if preset_name and preset_name.strip():
+            preset_name = preset_name.strip()
+            
+            # Controlla se esiste già
+            if preset_name in self.display_state.presets:
+                # Chiedi conferma sovrascrittura
+                confirm = ctk.CTkInputDialog(
+                    text=f"Preset '{preset_name}' already exists.\nType 'yes' to overwrite:",
+                    title="Confirm Overwrite"
+                )
+                response = confirm.get_input()
+                if response and response.lower() != 'yes':
+                    return
+            
+            self.display_state.save_preset(preset_name)
+            self.update_presets_list()
+
+    def load_preset(self, preset_name):
+        """Carica un preset"""
+        if self.display_state.load_preset(preset_name):
+            # Aggiorna tutti gli slider
+            for key, widgets in self.sliders.items():
+                val = self.display_state.current_settings.get(key, 1.0)
+                widgets["slider"].set(val)
+                widgets["label"].configure(text=f"{val:.2f}")
+
+    def show_manage_presets_dialog(self):
+        """Mostra finestra per gestire (rinominare/eliminare) preset"""
+        preset_names = self.display_state.get_preset_names()
+        
+        if not preset_names:
+            return
+        
+        # Crea finestra popup
+        manage_window = ctk.CTkToplevel(self)
+        manage_window.title("Manage Presets")
+        manage_window.geometry("380x450")
+        manage_window.resizable(False, False)
+        manage_window.configure(fg_color=BG_COLOR)
+        manage_window.attributes("-topmost", True)
+        
+        # Centra la finestra
+        manage_window.transient(self)
+        manage_window.grab_set()
+        
+        # Header
+        header = ctk.CTkLabel(
+            manage_window,
+            text="Manage Presets",
+            font=("Segoe UI", 20, "bold"),
+            text_color=TEXT_MAIN
+        )
+        header.pack(pady=(20, 10), padx=20)
+        
+        # Frame scrollabile per lista preset
+        scroll_frame = ctk.CTkScrollableFrame(
+            manage_window,
+            fg_color=CARD_BG,
+            corner_radius=12,
+            border_width=1,
+            border_color=BORDER_COLOR
+        )
+        scroll_frame.pack(fill="both", expand=True, padx=20, pady=(0, 10))
+        
+        def refresh_list():
+            for widget in scroll_frame.winfo_children():
+                widget.destroy()
+            
+            current_presets = self.display_state.get_preset_names()
+            
+            if not current_presets:
+                manage_window.destroy()
+                self.update_presets_list()
+                return
+            
+            for preset_name in current_presets:
+                preset_frame = ctk.CTkFrame(
+                    scroll_frame,
+                    fg_color=CARD_ALT_BG,
+                    corner_radius=8,
+                    border_width=1,
+                    border_color=BORDER_COLOR
+                )
+                preset_frame.pack(fill="x", pady=6, padx=4)
+                
+                # Nome
+                name_lbl = ctk.CTkLabel(
+                    preset_frame,
+                    text=preset_name,
+                    font=("Segoe UI", 13),
+                    text_color=TEXT_MAIN,
+                    anchor="w"
+                )
+                name_lbl.pack(side="left", padx=12, pady=10, fill="x", expand=True)
+                
+                # Bottoni
+                btn_container = ctk.CTkFrame(preset_frame, fg_color="transparent")
+                btn_container.pack(side="right", padx=8, pady=6)
+                
+                # Rename
+                btn_rename = ctk.CTkButton(
+                    btn_container,
+                    text="Rename",
+                    width=70,
+                    height=28,
+                    font=("Segoe UI", 11),
+                    fg_color=ACCENT,
+                    hover_color=ACCENT_DARK,
+                    corner_radius=6,
+                    command=lambda name=preset_name: rename_preset(name)
+                )
+                btn_rename.pack(side="left", padx=2)
+                
+                # Delete
+                btn_delete = ctk.CTkButton(
+                    btn_container,
+                    text="Delete",
+                    width=70,
+                    height=28,
+                    font=("Segoe UI", 11),
+                    fg_color=DANGER,
+                    hover_color="#450201",
+                    corner_radius=6,
+                    command=lambda name=preset_name: delete_preset(name)
+                )
+                btn_delete.pack(side="left", padx=2)
+        
+        def rename_preset(old_name):
+            dialog = ctk.CTkInputDialog(
+                text=f"Enter new name for '{old_name}':",
+                title="Rename Preset"
+            )
+            new_name = dialog.get_input()
+            
+            if new_name and new_name.strip() and new_name.strip() != old_name:
+                new_name = new_name.strip()
+                if self.display_state.rename_preset(old_name, new_name):
+                    refresh_list()
+                    self.update_presets_list()
+        
+        def delete_preset(preset_name):
+            if self.display_state.delete_preset(preset_name):
+                refresh_list()
+                self.update_presets_list()
+        
+        refresh_list()
+        
+        # Bottone chiudi
+        btn_close = ctk.CTkButton(
+            manage_window,
+            text="Close",
+            font=("Segoe UI", 12, "bold"),
+            fg_color=BORDER_COLOR,
+            hover_color="#3a3d50",
+            corner_radius=8,
+            height=36,
+            command=manage_window.destroy
+        )
+        btn_close.pack(pady=(0, 20), padx=20, fill="x")
 
 
 # --- TRAY ICON & THREADING ---
